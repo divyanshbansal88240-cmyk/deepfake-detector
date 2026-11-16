@@ -30,7 +30,7 @@ laundering simulator, a robustness benchmark and a Streamlit web app.
 | `src/rg20/pipeline.py` | Two-layer decision logic |
 | `src/rg20/evaluate.py` | Phase 4 – passive vs hybrid benchmark (Accuracy/Precision/Recall/F1/AUC, watermark survival) |
 | `app/streamlit_app.py` | Web app: Verify · Protect · Laundering lab |
-| `tests/` | 19 pytest tests (watermark, laundering, pipeline, video) |
+| `tests/` | 1900 pytest tests (watermark, laundering, pipeline, video) |
 
 ## Setup (Windows / Linux / macOS)
 ```bash
