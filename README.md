@@ -11,11 +11,11 @@ laundering simulator, a robustness benchmark and a Streamlit web app.
             ┌────────────────────────── upload ──────────────────────────┐
             ▼                                                            │
    Phase 1: watermark verify (DCT-QIM + HMAC, tamper map, fragile LSB)   │
-      │ verified, no tamper → ✅ AUTHENTIC                               │
-      │ verified, regions disagree → ⚠️ TAMPERED (+ heat-map)           │
+      │ verified, no tamper →  AUTHENTIC                               │
+      │ verified, regions disagree →  TAMPERED (+ heat-map)           │
       ▼ else                                                             │
    Phase 3: face crop (MTCNN/Haar) → ResNet / XceptionNet / forensic GBM │
-      │ fake prob ≥ τ → 🚨 DEEPFAKE   │ damaged mark → ⚠️ TAMPERED   │ else ❔ UNVERIFIED
+      │ fake prob ≥ τ →  DEEPFAKE   │ damaged mark →  TAMPERED   │ else  UNVERIFIED
    Phase 2 (attack simulator) is used to train & stress-test both layers; Phase 4 = benchmark + web app
 ```
 
