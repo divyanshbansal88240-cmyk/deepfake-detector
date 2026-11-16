@@ -1,103 +1,114 @@
-# deepfake-detector
-# RG20 — Deepfake & Tamper Detection Using Watermarking and Laundering Robustness Analysis
+# RG20 — Deepfake & Tamper Detection
 
-Major Project-I (18B19CI791), JUIT · Group RG20 · Supervisor: Dr. Ekta Gandotra
+**MP2 presentation documentation**
 
-A two-layer defence: **(1)** an invisible, keyed watermark embedded in authentic media *before* distribution,
-**(2)** a CNN/forensic deepfake classifier for media that fails watermark verification — plus a
-laundering simulator, a robustness benchmark and a Streamlit web app.
+This README describes the project scope and evidence to present at MP2. It is intentionally limited to the work demonstrated for that evaluation; planned or subsequently developed extensions should not be described as MP2-completed work.
 
-```
-            ┌────────────────────────── upload ──────────────────────────┐
-            ▼                                                            │
-   Phase 1: watermark verify (DCT-QIM + HMAC, tamper map, fragile LSB)   │
-      │ verified, no tamper →  AUTHENTIC                               │
-      │ verified, regions disagree →  TAMPERED (+ heat-map)           │
-      ▼ else                                                             │
-   Phase 3: face crop (MTCNN/Haar) → ResNet / XceptionNet / forensic GBM │
-      │ fake prob ≥ τ →  DEEPFAKE   │ damaged mark →  TAMPERED   │ else  UNVERIFIED
-   Phase 2 (attack simulator) is used to train & stress-test both layers; Phase 4 = benchmark + web app
-```
+## Project overview
 
-## Layout
-| Path | Purpose |
+RG20 explores a two-stage approach to media authenticity:
+
+1. **Media provenance / watermark verification:** embed a keyed, invisible watermark in an image and verify the watermark when the image is submitted.
+2. **Deepfake screening:** when provenance cannot be verified, an available classifier can provide an additional prediction. An unverified watermark is not, by itself, proof that media is fake.
+
+The implementation uses Python, OpenCV and NumPy for image handling and watermark processing. The repository also contains supporting modules and experiments; only features that were implemented, run and demonstrated by the MP2 evaluation should be included in the MP2 presentation and results.
+
+## MP2 presentation scope
+
+Use this section as the presentation checklist. Mark a feature as completed only if your team can demonstrate it on the submitted build.
+
+- [ ] Image upload and input validation
+- [ ] Image preprocessing
+- [ ] Face detection / extraction (if included in the demonstrated build)
+- [ ] Initial deepfake classifier inference (only if trained weights and inference were actually tested)
+- [ ] Initial evaluation on a documented dataset
+- [ ] Basic user workflow
+
+Do not report model accuracy, dataset performance, watermark robustness, or frontend functionality unless the corresponding experiment was run and its outputs can be reproduced. Procedural/synthetic images are useful for software tests, but are not a substitute for FaceForensics++ or DFDC evaluation.
+
+## Repository layout
+
+| Path | Role |
 |---|---|
-| `src/rg20/watermark.py` | Phase 1 – DCT-QIM robust watermark, HMAC tag, tamper localisation, fragile LSB layer |
-| `src/rg20/laundering.py` | Phase 2 – JPEG, resize, blur, noise, H.264 (libx264), screen-record chain; 3 intensities |
-| `src/rg20/faces.py`, `video.py`, `data.py` | MTCNN/Haar face crops, 30-FPS frame extraction, video watermarking, FF++/DFDC preparation, clip-grouped splits |
-| `src/rg20/models.py`, `train.py`, `detectors.py` | Phase 3 – ResNet18/50/152 & XceptionNet (PyTorch), dual-stream training |
-| `src/rg20/classical.py` | Torch-free forensic detector (spectrum + noise-residual features → gradient boosting) |
-| `src/rg20/pipeline.py` | Two-layer decision logic |
-| `src/rg20/evaluate.py` | Phase 4 – passive vs hybrid benchmark (Accuracy/Precision/Recall/F1/AUC, watermark survival) |
-| `app/streamlit_app.py` | Web app: Verify · Protect · Laundering lab |
-| `tests/` | 1900 pytest tests (watermark, laundering, pipeline, video) |
+| `src/rg20/` | Python package containing image, watermark, pipeline and supporting modules |
+| `app/streamlit_app.py` | Streamlit interface |
+| `tests/` | Automated regression tests |
+| `scripts/` | Demo and experiment scripts |
+| `outputs/` | Generated local experiment outputs (not ground-truth evidence unless documented) |
 
-## Setup (Windows / Linux / macOS)
-```bash
-python -m venv .venv && .venv\Scripts\activate        # Linux/macOS: source .venv/bin/activate
-pip install torch torchvision                            # NVIDIA GPU: add --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt
-pip install -e .                                         # makes `python -m rg20` work from anywhere
+The presence of a source module does not imply that it was completed or evaluated by MP2. Explain only the parts your team can run and defend.
+
+## Setup
+
+Use Python 3.10 or 3.11 in a virtual environment. Install the dependencies listed by the project if your checkout contains its dependency file. The core test suite requires OpenCV, NumPy, SciPy, scikit-image, scikit-learn, pandas, PyYAML, joblib and pytest.
+
+For Windows PowerShell:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install numpy opencv-python scipy scikit-image scikit-learn pandas pyyaml joblib pytest
+$env:PYTHONPATH = "src"
 pytest -q
 ```
-Install **ffmpeg** (Windows: `winget install Gyan.FFmpeg`, then reopen the terminal) for H.264 attacks and video watermarking.
-Optional MTCNN: `pip install facenet-pytorch --no-deps` (otherwise OpenCV Haar faces are used).
 
-## Quick start (no dataset needed)
+For macOS / Linux:
+
 ```bash
-bash scripts/run_demo.sh                 # (Windows: powershell -File scripts/run_demo.ps1)   synthetic data → train → benchmark → embed/launder/verify
-streamlit run app/streamlit_app.py       # pick a detector in the sidebar
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install numpy opencv-python scipy scikit-image scikit-learn pandas pyyaml joblib pytest
+PYTHONPATH=src pytest -q
 ```
-Single-image CLI:
+
+The optional video tests require FFmpeg. If FFmpeg is unavailable, those tests are skipped by the existing video test module.
+
+## Run the interface
+
+If Streamlit and all application dependencies are installed:
+
 ```bash
-python -m rg20 --key mykey embed photo.jpg protected.png --media-id 1001
-python -m rg20 launder protected.png shared.jpg --attack jpeg --level 3
-python -m rg20 --key mykey verify shared.jpg --detector outputs/classical_robust.joblib
-python -m rg20 --key mykey video-embed in.mp4 out.mp4 && python -m rg20 --key mykey video-verify out.mp4
+streamlit run app/streamlit_app.py
 ```
-Always **share protected images as PNG** if you want the pixel-exact layer; the robust layer survives JPEG/H.264 anyway.
 
-## Real experiments (FaceForensics++ / DFDC)
+For the MP2 demonstration, use only the tabs and functions that were completed and tested by that milestone. Do not imply that an unfinished detector has been trained merely because a model architecture exists in the repository.
+
+## Testing
+
+Run the automated suite from the repository root:
+
 ```bash
-python -m rg20 prepare --src "D:\\FaceForensics++_C23" --out data/faces --frames-per-video 10 --max-videos 300 --exclude csv
-# faces + manifest.csv; --max-videos is per class and samples every manipulation folder evenly
-python -m rg20 train --manifest data/faces/manifest.csv --arch xception --launder-prob 0   --out outputs/xception_passive.pt
-python -m rg20 train --manifest data/faces/manifest.csv --arch xception --launder-prob 0.6 --wm-prob 0.3 --out outputs/xception_robust.pt
-python -m rg20 benchmark --manifest data/faces/manifest.csv --detector passive=outputs/xception_passive.pt --detector robust=outputs/xception_robust.pt
+PYTHONPATH=src pytest -v
 ```
-See `scripts/train_cnn_colab.md` for Colab. Splits are grouped by source clip so frames of one video never leak across train/test.
-Use `--wm-prob 0` for a strictly passive baseline (otherwise the net can learn "watermark residual ⇒ real").
 
-## How the watermark works
-* 64-bit payload = 32-bit media ID ‖ 32-bit truncated HMAC-SHA256(key, ID) → unforgeable without the key; wrong key / unmarked media score ≈ chance (≈50 %) on the tag.
-* Luma is resized to a canonical 128×128 grid (→ robust to rescaling), 8×8 block DCT, three low/mid coefficients per block carry **dithered QIM** bits; bit-to-block assignment and dither are key-derived; decoding sums soft votes over ~16 blocks×3 coefficients per bit.
-* Verified ⇔ ≥ 28/32 tag bits match (chance false-accept ≈ 1e-5). Profiles in `watermark.PROFILES`: `stealth` ≈40 dB, `balanced` ≈37 dB, `robust` ≈34 dB PSNR.
-* **Tamper map**: per-block agreement between each block's votes and the decoded payload; pasted/re-synthesised regions disagree and are flagged (see `outputs/demo_tamper.png`).
-* **Fragile LSB layer**: keyed pattern in blue-channel LSBs; intact ⇒ lossless original, `localised` ⇒ pixel-exact edit regions, `absent` ⇒ re-encoded.
-* Video: every frame is marked; verification pools soft votes across sampled frames (temporal averaging).
+The extended regression suite checks public software contracts including:
 
-## Results produced in this repository (procedural proxy data — NOT FF++/DFDC)
-`outputs/benchmark/` (CSV + plots), 80 test images, classical detector, `balanced` watermark. The synthetic "fakes" carry
-generator-style artifacts, so absolute numbers say nothing about real deepfakes; they validate that the pipeline works and show the *trend*.
+- watermark payload and image round-trips
+- profile and key separation behaviour
+- image geometry and laundering output contracts
+- deterministic synthetic fixture generation
+- face crop output shape
+- classification metric ranges
+- visualisation output shape
+- pipeline decisions with controlled detector predictions
+- invalid input handling
 
-Watermark survival (% of protected authentic images still verified; false-accept on fakes = 0 % in every condition):
+These are software regression tests. Passing them does not establish real-world deepfake detection accuracy or robustness against all laundering attacks. Report the actual test count and pass/skip/fail totals from the latest run rather than a planned target.
 
-| attack | light | medium | heavy |
-|---|---|---|---|
-| JPEG (q70/40/15) | 100 | 100 | 100 |
-| resize (0.75/0.5/0.3×) | 100 | 100 | 88 (98 robust) |
-| blur (σ .8/1.5/2.5) | 100 | 98 | 78 (85 robust) |
-| noise (σ 4/10/20) | 100 | 100 | 100 |
-| H.264 (CRF 28/35/42) | 100 | **8** (72 robust) | 0 |
-| screen-record chain | 88 (100 robust) | 0 (52 robust) | 0 |
+## Results and limitations
 
-Passive accuracy collapses under resize/blur/noise (0.94 → ~0.5) while the hybrid system stays at 0.88–1.0 for those attacks.
-**Honest limits:** hybrid gains nothing where the watermark dies (H.264 ≥ CRF 35, screen recording, `balanced` profile) or where
-the *fake* is the problem (JPEG: marks survive but the passive detector still misses fakes). Cropping/rotation break block alignment.
-Tamper localisation can false-alarm on very dark/saturated regions under q≤30 JPEG.
+Record only measured results from reproducible runs. For each experiment, note:
 
-## Status of this build
-Verified by running here: watermark engine, tamper maps, laundering, video, classical detector, benchmark, 19/19 tests.
-**Not executed here** (the build sandbox could not install PyTorch/Streamlit): `train.py`, `models.py`, `TorchDetector`, MTCNN backend
-and `app/streamlit_app.py` — they compile and follow the same interfaces, but run them once (`pytest`, a 1-epoch
-`rg20 train`, `streamlit run`) and expect to fix small issues.
+- dataset and version
+- train / validation / test split method
+- model checkpoint and configuration
+- hardware and software environment
+- metric definitions and measured values
+
+Synthetic procedural data can validate pipeline behaviour, but must not be presented as real-world deepfake benchmark performance. A classifier's output is a probability estimate, not definitive proof of manipulation. An unverified watermark means provenance could not be established; it does not automatically mean the media is fake.
+
+## Future work
+
+List unfinished or post-MP2 work here in the report or presentation, with its status clearly marked as planned / in progress / completed after MP2. Do not backdate later implementation or test results to the MP2 milestone.
